@@ -1,0 +1,33 @@
+# DP100 fw 1.5 / hw 1.4, USB serial 3F0F22964000, Vin 15.22 V. Nothing connected to the output.
+# Initial state: output ON (state=1), 5.000 V / 0.500 A, OVP 30.5 V, OCP 5.05 A, preset 0.
+
+## 1. Single 0x20 write with state=0 and unchanged V/I (dp100ctl off, pre-fix code)
+TX FB 35 02 01 80 6F E8
+RX FA 35 02 0A 00 01 88 13 F4 01 24 77 BA 13 42 75          active set: state=1 5000/500/30500/5050
+TX FB 35 03 0A 20 00 88 13 F4 01 24 77 BA 13 B3 8D          0x20, state=0, same setpoints
+RX FA 35 03 01 01 C3 88                                     ACK
+TX FB 35 04 01 80 8F E9
+RX FA 35 04 0A 00 00 88 13 F4 01 24 77 BA 13 47 ED          read-back: state=0
+# Telemetry 0 .. 5.5 s after the write (50 Hz then 2 Hz):
+#   Vout 4.997 .. 5.000 V, Iout 0 .. 1 mA, out_mode=1 (CV), work_st=0   -> output still ON
+
+## 2. ElluIFX/DLL CloseOut double write (raw script)
+start                        Vout= 4996 mV Iout=   0 mA out_mode=1 work_st=0 | set: state=0 V=5000 I=500 OVP=30500 OCP=5050
+TX FB 35 67 0A 20 00 00 00 00 00 24 77 BA 13 C1 71  -> ack 01  (CloseOut V=0 I=0)
++40 ms                       Vout= 3155 mV Iout=   0 mA out_mode=2 work_st=0 | set: state=0 V=0 I=0 OVP=30500 OCP=5050
+TX FB 35 6A 0A 20 00 88 13 F4 01 24 77 BA 13 2F 11  -> ack 01  (CloseOut real setpoints)
++50 ms after 2nd write       Vout=  503 mV Iout=   0 mA out_mode=2 work_st=0 | set: state=0 V=5000 I=500 OVP=30500 OCP=5050
++200 ms after 2nd write      Vout=    0 mV Iout=   0 mA out_mode=2 work_st=0 | set: state=0 V=5000 I=500 OVP=30500 OCP=5050
++2000 ms after 2nd write     Vout=    0 mV Iout=   0 mA out_mode=2 work_st=0 | set: state=0 V=5000 I=500 OVP=30500 OCP=5050
+
+## 3. Setpoint change with output OFF (dp100ctl set -v 3.3, then set -v 5.0)
+TX FB 35 02 01 80 6F E8
+RX FA 35 02 0A 00 00 88 13 F4 01 24 77 BA 13 4F E5
+TX FB 35 04 0A 20 00 E4 0C F4 01 24 77 BA 13 AE FA          0x20, state=0, 3300 mV / 500 mA
+RX FA 35 04 01 01 72 49                                     ACK
+TX FB 35 05 01 80 DE 29
+RX FA 35 05 0A 00 00 E4 0C F4 01 24 77 BA 13 52 92          read-back 3300 mV, state=0
+# Telemetry 1.5 s: Vout 0.000 V, out_mode=2 (OFF)
+# Preset P0 read (index 0x00) still 5000 mV / 500 mA, stored state=1 -> 0x20 does not modify stored presets
+# set -v 5.0: ACK, read-back 5000 mV state=0, Vout 0, out_mode=2
+## 4. HIL test hil_setpoint_write_with_output_off (new code): pass. Final: OFF, 5.000 V / 0.500 A, OVP 30.5 V, OCP 5.05 A.

@@ -1,0 +1,25 @@
+[package]
+name = "dp100-mcp"
+description = "MCP server for the ALIENTEK DP100 lab power supply"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dp100.workspace = true
+dp100-proto = { workspace = true, features = ["serde"] }
+anyhow.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+clap.workspace = true
+rmcp.workspace = true
+axum.workspace = true
+
+[lints]
+workspace = true

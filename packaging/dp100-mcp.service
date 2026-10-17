@@ -1,0 +1,43 @@
+# Optional: run dp100-mcp as a Streamable HTTP service on loopback.
+#   sudo useradd --system --no-create-home --groups plugdev dp100
+#   sudo install -m 0755 target/release/dp100-mcp /usr/local/bin/
+#   sudo install -D -m 0644 packaging/dp100-mcp.toml /etc/dp100-mcp/config.toml
+#   sudo install -m 0644 packaging/dp100-mcp.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now dp100-mcp
+[Unit]
+Description=MCP server for the ALIENTEK DP100 power supply (Streamable HTTP)
+Documentation=file:///usr/local/share/doc/dp100-mcp/README.md
+After=network.target
+
+[Service]
+Type=simple
+User=dp100
+Group=dp100
+SupplementaryGroups=plugdev
+ExecStart=/usr/local/bin/dp100-mcp --http 127.0.0.1:8765 --config /etc/dp100-mcp/config.toml --csv-dir /var/lib/dp100-mcp
+Environment=DP100_LOG=info
+Restart=on-failure
+RestartSec=2
+# SIGTERM triggers the configured on_exit policy.
+KillSignal=SIGTERM
+TimeoutStopSec=10
+StateDirectory=dp100-mcp
+
+# Hardening: only hidraw devices are reachable.
+DevicePolicy=closed
+DeviceAllow=char-hidraw rw
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

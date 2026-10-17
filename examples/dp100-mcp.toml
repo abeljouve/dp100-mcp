@@ -1,0 +1,18 @@
+# dp100-mcp / dp100ctl configuration. Command-line flags override these values.
+
+[device]
+# USB serial of the default unit (see `dp100ctl list`). Omit if only one is connected.
+# serial = "3F0F22964000"
+
+[limits]
+# Requests above these values are refused (never clamped).
+max_voltage_v = 12.0
+max_current_a = 1.0
+# Extra Vin − Vout margin on top of the firmware's vo_max (mV).
+vin_dropout_mv = 500
+
+[server]
+# What to do with the outputs when the server stops: "keep" or "off".
+on_exit = "off"
+# http = "127.0.0.1:8765"
+# allowed_hosts = ["benchpc.lan"]

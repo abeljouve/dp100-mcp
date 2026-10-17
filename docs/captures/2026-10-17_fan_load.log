@@ -1,0 +1,48 @@
+# DP100 fw 1.5, Vin ~15.2 V. Load: PC fan 12 V / 0.3 A (red +, black -). 2026-10-17.
+# out_mode: 0=CC 1=CV 2=OFF. CSVs in fan_12v/ (t_ms,vin_mv,vout_mv,iout_ma,power_mw,mode_raw,protection_raw).
+
+## 1. Start at 12 V / 0.5 A (startup.csv, 200 Hz): CC (mode 0) for 334 ms at 0.497-0.498 A, Vout sagging to ~9.3-11.8 V, then CV; steady 11.998 V / 0.323 A after 2 s.
+## 2. Steady 10 s (steady_12v.csv): Vout 11.997 V, Iout 0.287 A mean (0.286-0.288), 3.44 W, 9.50 mWh.
+
+## 3. First ramp 5->12 V with the ORIGINAL code (0x35/0x80 read-back ~2 ms after each write):
+#   12->5 V applied; 6..12 V acknowledged and read back, but Vout stayed at 4.99 V (fan 0.10 A). No warning (code did not compare Vout).
+
+## 4. Raw writes with 0.5 s before any read: all applied
+    pre        Vout= 4996 mV Iout=103 mA mode=1 | set state=1 V=12000 I=500
+TX FB 35 CB 0A 20 01 E0 2E F4 01 24 77 BA 13 B7 CE -> ack 01  [E1 rewrite 12 V (same as stored)]
+    +0.5 s     Vout=11997 mV Iout=361 mA mode=1 | set state=1 V=12000 I=500
+    +1.5 s     Vout=11996 mV Iout=304 mA mode=1 | set state=1 V=12000 I=500
+    pre        Vout=11996 mV Iout=304 mA mode=1 | set state=1 V=12000 I=500
+TX FB 35 D2 0A 20 01 F8 2A F4 01 24 77 BA 13 2F 47 -> ack 01  [E2 decrease to 11 V]
+    +0.5 s     Vout=10996 mV Iout=256 mA mode=1 | set state=1 V=11000 I=500
+    +1.5 s     Vout=10997 mV Iout=262 mA mode=1 | set state=1 V=11000 I=500
+    pre        Vout=10996 mV Iout=262 mA mode=1 | set state=1 V=11000 I=500
+TX FB 35 D9 0A 20 01 E0 2E F4 01 24 77 BA 13 8F F6 -> ack 01  [E3 increase to 12 V]
+    +0.5 s     Vout=11996 mV Iout=298 mA mode=1 | set state=1 V=12000 I=500
+    +1.5 s     Vout=11997 mV Iout=292 mA mode=1 | set state=1 V=12000 I=500
+
+## 5. Read-after-write race (write 0x20, then a read after N ms, check Vout 1 s later)
+V 11998 -> set 11000, then active after   0 ms : Vout after 1 s = 11996 mV mode=1  NOT APPLIED
+V 11997 -> set 12000, then nothing after   0 ms : Vout after 1 s = 11999 mV mode=1  APPLIED
+V 11995 -> set 11000, then active after   0 ms : Vout after 1 s = 11997 mV mode=1  NOT APPLIED
+V 11995 -> set 12000, then active after   0 ms : Vout after 1 s = 11998 mV mode=1  APPLIED
+V 11999 -> set 11000, then basic after   0 ms : Vout after 1 s = 10999 mV mode=1  APPLIED
+V 10997 -> set 12000, then basic after   0 ms : Vout after 1 s = 12000 mV mode=1  APPLIED
+V 11998 -> set 11000, then active after  50 ms : Vout after 1 s = 11000 mV mode=1  APPLIED
+V 10998 -> set 12000, then active after 200 ms : Vout after 1 s = 11997 mV mode=1  APPLIED
+V 11998 -> set 11000, then active after  20 ms : Vout after 1 s = 10998 mV mode=1  APPLIED
+V 10996 -> set 12000, then active after   5 ms : Vout after 1 s = 10996 mV mode=1  NOT APPLIED
+#   (lines where Vout was already at the target are not informative)
+
+## 6. Single OFF write, unchanged V/I, with/without immediate 0x80 read
+O1 OFF, unchanged V/I, no read               before Vout=10995 mode=1 | ack 01 | +300 ms Vout=    0 mode=2 state_byte=0
+ON again                                     before Vout=    0 mode=2 | ack 01 | +300 ms Vout=11994 mode=1 state_byte=1
+O2 OFF, unchanged V/I, immediate 0x80 read   before Vout=11997 mode=1 | ack 01 | +300 ms Vout=11996 mode=1 state_byte=0
+O3 OFF retry, no read                        before Vout=11998 mode=1 | ack 01 | +300 ms Vout=  338 mode=2 state_byte=0
+ON with immediate 0x80 read                  before Vout=    0 mode=2 | ack 01 | +300 ms Vout=11995 mode=1 state_byte=1
+
+## 7. Fixed code (100 ms write guard + telemetry verification), via dp100-mcp:
+#   ramp 5..12 V: Vout 4.999 5.996 6.998 7.997 9.001 9.997 11.000 11.995 V, I 0.089..0.288 A, CV, no warnings, no re-send
+#   I limit 0.05 A at 12 V (cc_50ma.csv): mode 0 for 3 s, I 0.050-0.051 A, Vout 5.87 -> 3.54 V (fan slowing)
+#   power_cycle off 1 s (power_cycle.csv): OFF (mode 2) with Vout decaying slowly (spinning fan back-EMF), back ON in CV 11.96 V
+#   output_off verified; final: OFF, 5.000 V / 0.500 A, OVP 30.5 V, OCP 5.05 A

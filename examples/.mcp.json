@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "dp100": {
+      "command": "dp100-mcp",
+      "args": ["--max-voltage", "12", "--max-current", "1", "--on-exit", "off"],
+      "env": { "DP100_LOG": "info" }
+    },
+    "dp100-http": {
+      "type": "http",
+      "url": "http://127.0.0.1:8765/mcp"
+    }
+  }
+}

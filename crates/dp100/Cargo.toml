@@ -1,0 +1,28 @@
+[package]
+name = "dp100"
+description = "Async device layer for the ALIENTEK DP100 (hidapi/hidraw, actor thread, auto-reconnect)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+dp100-proto = { workspace = true, features = ["serde"] }
+hidapi.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+serde.workspace = true
+schemars.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+
+[features]
+default = []
+# Hardware-in-the-loop integration tests (need a real DP100 attached).
+hil = []
+
+[lints]
+workspace = true

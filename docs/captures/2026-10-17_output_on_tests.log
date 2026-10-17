@@ -1,0 +1,40 @@
+# DP100 fw 1.5, Vin 15.22 V, nothing connected. ON tests (raw 0x20 frames), caps V<=3.3 V I<=0.1 A.
+# out_mode: 0=CC 1=CV 2=OFF; each '+N ms' line = 0x30 telemetry + 0x35/0x80 read-back
+  initial                Vout=    0 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3300 I=100
+== A: state=1 with UNCHANGED V/I (3300/100)
+TX FB 35 99 0A 20 01 E4 0C 64 00 24 77 BA 13 AD A8 -> ack 01  [ON, same V/I]
+  +20 ms                 Vout=  664 mV Iout= 17 mA out_mode=0 work=0 | state=1 V=3300 I=100
+  +50 ms                 Vout= 2849 mV Iout= 24 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +100 ms                Vout= 3262 mV Iout=  9 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +200 ms                Vout= 3298 mV Iout=  1 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +500 ms                Vout= 3298 mV Iout=  0 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +1000 ms               Vout= 3299 mV Iout=  0 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +2000 ms               Vout= 3300 mV Iout=  0 mA out_mode=1 work=0 | state=1 V=3300 I=100
+== cut
+TX FB 35 A8 0A 20 00 00 00 00 00 24 77 BA 13 D6 24 -> ack 01  [OFF (1/2 V=I=0)]
+TX FB 35 A9 0A 20 00 E4 0C 64 00 24 77 BA 13 E0 78 -> ack 01  [OFF (2/2 setpoints)]
+  +50 ms                 Vout=  757 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3300 I=100
+  +200 ms                Vout=    0 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3300 I=100
+  +500 ms                Vout=    0 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3300 I=100
+== B prep: change setpoint to 3000/100 with state=0 (must stay OFF)
+TX FB 35 B0 0A 20 00 B8 0B 64 00 24 77 BA 13 4E 32 -> ack 01  [OFF, V=3.0]
+  +100 ms                Vout=    0 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3000 I=100
+  +300 ms                Vout=    0 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3000 I=100
+== B: state=1 with CHANGED V (3000 -> 3300)
+TX FB 35 B5 0A 20 01 E4 0C 64 00 24 77 BA 13 3C 07 -> ack 01  [ON, V changed]
+  +20 ms                 Vout= 2193 mV Iout= 91 mA out_mode=0 work=0 | state=1 V=3300 I=100
+  +50 ms                 Vout= 3300 mV Iout=  1 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +100 ms                Vout= 3300 mV Iout=  0 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +200 ms                Vout= 3300 mV Iout=  0 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +500 ms                Vout= 3301 mV Iout=  0 mA out_mode=1 work=0 | state=1 V=3300 I=100
+  +1000 ms               Vout= 3299 mV Iout=  0 mA out_mode=1 work=0 | state=1 V=3300 I=100
+RESULT A(on, unchanged V/I): final out_mode=1  B(on, changed V): final out_mode=1
+== final cut
+TX FB 35 C2 0A 20 00 00 00 00 00 24 77 BA 13 4E BC -> ack 01  [OFF final (1/2 V=I=0)]
+TX FB 35 C3 0A 20 00 E4 0C 64 00 24 77 BA 13 78 E0 -> ack 01  [OFF final (2/2 setpoints)]
+  +50 ms                 Vout=  854 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3300 I=100
+  +200 ms                Vout=    0 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3300 I=100
+  +500 ms                Vout=    0 mV Iout=  0 mA out_mode=2 work=0 | state=0 V=3300 I=100
+
+## dp100ctl (new code): on -> status 3.102 V rising, CV; cycle --off-ms 500: before ON 3.293 V CV, after ON 3.300 V CV, no state mismatch; off -> Vout 0.116 V falling, OFF; set -v 4 --on refused by --max-voltage 3.5
+## Restored: OFF, 5.000 V / 0.500 A, OVP 30.5 V, OCP 5.05 A

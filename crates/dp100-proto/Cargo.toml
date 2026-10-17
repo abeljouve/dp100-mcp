@@ -1,0 +1,18 @@
+[package]
+name = "dp100-proto"
+description = "Sans-I/O frame codec for the ALIENTEK DP100 USB HID protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde = { workspace = true, optional = true }
+
+[features]
+default = []
+serde = ["dep:serde"]
+
+[lints]
+workspace = true

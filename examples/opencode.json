@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "dp100": {
+      "type": "local",
+      "command": ["dp100-mcp", "--max-voltage", "12", "--max-current", "1", "--on-exit", "off"],
+      "enabled": true,
+      "environment": { "DP100_LOG": "info" }
+    },
+    "dp100-http": {
+      "type": "remote",
+      "url": "http://127.0.0.1:8765/mcp",
+      "enabled": false,
+      "oauth": false
+    }
+  }
+}
