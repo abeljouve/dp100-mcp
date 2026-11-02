@@ -27,9 +27,42 @@ Le protocole USB HID (propriétaire, reversé) est documenté dans [`docs/PROTOC
 
 ## Installation
 
+### Déploiement recommandé : un service partagé
+
+Un **seul** processus doit piloter une DP100. Si deux processus y accèdent en même temps, une lecture de l'un peut annuler une écriture de l'autre (PROTOCOL.md §5.3.1). `dp100` pose donc un verrou exclusif (`flock`) sur le nœud hidraw : un second processus est refusé avec un message explicite.
+
+Le déploiement recommandé est un service systemd `dp100-mcp` en Streamable HTTP sur `127.0.0.1:8765`, propriétaire de l'appareil, auquel tous les agents se connectent.
+
 ```bash
 sudo apt install build-essential pkg-config libudev-dev
 ```
+
+```bash
+cargo build --release && sudo packaging/install.sh
+```
+
+[`packaging/install.sh`](packaging/install.sh) est idempotent. Il installe :
+- les binaires dans `/usr/local/bin` ;
+- la règle udev ;
+- un utilisateur système `dp100` (groupe `plugdev`) ;
+- la config `/etc/dp100-mcp/config.toml`, sauf si elle existe déjà ;
+- la doc dans `/usr/local/share/doc/dp100-mcp/` ;
+- l'unité systemd, qu'il active et démarre.
+
+Ensuite, pour chaque client :
+
+```bash
+claude mcp add --scope user --transport http dp100 http://127.0.0.1:8765/mcp
+```
+
+Pour OpenCode, utilise l'entrée `remote` de [`examples/opencode.json`](examples/opencode.json), avec `"enabled": true`.
+
+Exploitation courante :
+- **modifier les limites** : édite `/etc/dp100-mcp/config.toml`, puis `sudo systemctl restart dp100-mcp` ;
+- **logs** : `journalctl -u dp100-mcp -f` ;
+- **utiliser `dp100ctl`** pendant que le service tourne : arrête d'abord le service avec `sudo systemctl stop dp100-mcp` (avec `on_exit = "off"`, la sortie est coupée), sinon `dp100ctl` est refusé par le verrou.
+
+### Installation manuelle
 
 ```bash
 cargo build --release
@@ -101,6 +134,8 @@ Tous les outils acceptent un `serial` optionnel ; il est requis si plusieurs DP1
 
 ### Claude Code (stdio)
 
+Seulement si aucun service ne tourne : un seul processus peut tenir l'appareil.
+
 ```bash
 claude mcp add dp100 -- dp100-mcp --max-voltage 12 --max-current 1 --on-exit off
 ```
@@ -131,9 +166,9 @@ Voir [`examples/opencode.json`](examples/opencode.json). Le serveur `local` lanc
 - Il n'y a **aucune authentification** : n'écoute pas sur une adresse non loopback sans reverse proxy authentifié.
 - En HTTP, `measure` n'écrit de CSV que si `--csv-dir` est fourni, et seulement dans ce répertoire. En stdio, tout chemin absolu est accepté.
 
-### Unité systemd (optionnelle)
+### Unité systemd
 
-[`packaging/dp100-mcp.service`](packaging/dp100-mcp.service) lance le mode HTTP sur `127.0.0.1:8765` sous un utilisateur système `dp100` du groupe `plugdev`, avec un sandboxing qui n'autorise que les périphériques hidraw. Les commandes d'installation sont en tête du fichier.
+[`packaging/dp100-mcp.service`](packaging/dp100-mcp.service) lance le mode HTTP sur `127.0.0.1:8765` sous l'utilisateur système `dp100` (groupe `plugdev`), avec un sandboxing qui n'autorise que les périphériques hidraw. Les CSV de `measure` vont dans `/var/lib/dp100-mcp`. Elle est installée par `packaging/install.sh`.
 
 ## Configuration TOML
 

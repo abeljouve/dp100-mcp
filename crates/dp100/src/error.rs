@@ -11,6 +11,11 @@ pub enum Error {
     Ambiguous(Vec<String>),
     #[error("HID error: {0}")]
     Hid(String),
+    #[error(
+        "{0} is in use by another dp100 process (typically the dp100-mcp service); \
+         use the MCP server, or stop it first (systemctl stop dp100-mcp)"
+    )]
+    Busy(String),
     #[error("device disconnected: {0}")]
     Disconnected(String),
     #[error(

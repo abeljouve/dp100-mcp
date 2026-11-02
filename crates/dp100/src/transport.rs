@@ -100,13 +100,23 @@ impl Connector for HidConnector {
                 ));
             }
         };
+        // Exclusive advisory lock on the hidraw node: two processes driving the
+        // same unit can cancel each other's writes (docs/PROTOCOL.md §5.3.1).
+        let path = info.path().to_string_lossy().into_owned();
+        let lock = std::fs::File::open(&path)
+            .map_err(|e| Error::Hid(format!("cannot open {path} ({e}); check the udev rule / plugdev membership")))?;
+        match lock.try_lock() {
+            Ok(()) => {}
+            Err(std::fs::TryLockError::WouldBlock) => return Err(Error::Busy(path)),
+            Err(std::fs::TryLockError::Error(e)) => return Err(Error::Hid(format!("cannot lock {path}: {e}"))),
+        }
         let dev = info.open_device(&api).map_err(|e| {
             Error::Hid(format!(
                 "cannot open {} ({e}); check the udev rule / plugdev membership",
                 info.path().to_string_lossy()
             ))
         })?;
-        Ok(Box::new(HidTransport { dev }))
+        Ok(Box::new(HidTransport { dev, _lock: lock }))
     }
 
     fn describe(&self) -> String {
@@ -116,6 +126,8 @@ impl Connector for HidConnector {
 
 struct HidTransport {
     dev: HidDevice,
+    /// Holds the flock for as long as the link is open.
+    _lock: std::fs::File,
 }
 
 impl Transport for HidTransport {
