@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/example/dp100-mcp"
+repository = "https://github.com/abeljouve/dp100-mcp"
 
 [workspace.dependencies]
 dp100-proto = { path = "crates/dp100-proto" }
